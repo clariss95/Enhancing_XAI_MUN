@@ -8,20 +8,12 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, BatchNormalization, Dropout, Bidirectional, Concatenate
-from tensorflow.keras.preprocessing import timeseries_dataset_from_array
-from tensorflow.keras.layers import Input
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.models import Model
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import roc_curve, auc, confusion_matrix, classification_report
 from imblearn.over_sampling import SMOTE
 
 
 # load the ED visits dataset that has been cleaned and preprocessed
-df_event_log_dl = pd.read_csv('df_event_log_visits_for_ML_randomorder.csv')
+df_event_log_dl = pd.read_csv('df_event_log_visits_for_ML_randomorder_areafix.csv')
 
 
 df_event_log_dl.info()
@@ -71,6 +63,7 @@ rename_dict = {
     'Std_Inverse_CTAS': 'event:Std_Inverse_CTAS',
     'Mean_Inverse_CTAS': 'event:Mean_Inverse_CTAS',
     'Mean_Age': 'event:Mean_Age',
+    'Area_Type': 'case:Area_Type',
     'Unique_Presenting_Complaints': 'event:Unique_Presenting_Complaints',
     'Is_LWBS': 'event:Is_LWBS',
     'Activity_Duration': 'event:Activity_Duration',
@@ -112,9 +105,8 @@ sequence_length =  3
 
 event_feature_columns = [
     'event:CTAS', 'event:PRESENTING_COMPLAINT_ENCODED',
-     'event:ED_Business_Hourly', 'event:Inverse_CTAS', 'event:Std_Inverse_CTAS', 'event:Mean_Inverse_CTAS',
-    'event:Mean_Age', 'event:Unique_Presenting_Complaints', 'event:Num_Imaging_Tests',
-    'event:Num_Lab_Tests', 'event:Activity_Admitting patient', 'event:Activity_Assessment',
+     'event:ED_Business_Hourly', 'event:Inverse_CTAS', 'event:Std_Inverse_CTAS', 'event:Mean_Inverse_CTAS', 'event:Unique_Presenting_Complaints', 'event:Num_Imaging_Tests',
+    'event:Num_Lab_Tests', 'event:Mean_Age', 'event:Activity_Admitting patient', 'event:Activity_Assessment',
     'event:Activity_Making admit decision', 'event:Activity_Patient departed', 
     'event:Activity_Patient discharge', 'event:Activity_Providing service', 
     'event:Activity_Triage', 'event:Activity_Duration', 'event:Disposition_Frequency'
@@ -123,7 +115,7 @@ event_feature_columns = [
 
 case_feature_columns = [
     'case:SEX', 'case:VISIT_AGE', 'case:Is_Deceased', 'case:Distance_to_Hospital',
-     'case:Is_NL_Holiday', 'case:Day_of_Week', 'case:Is_Weekend', 'case:Visit_Frequency', 
+     'case:Is_NL_Holiday', 'case:Area_Type','case:Day_of_Week', 'case:Is_Weekend', 'case:Visit_Frequency', 
      'case:Prior_LWBS', 'case:Case_Duration_Hours', 'case:FACILITY_ID_BUR', 'case:FACILITY_ID_CGH', 
      'case:FACILITY_ID_GBC', 'case:FACILITY_ID_HSC', 'case:FACILITY_ID_SCM', 'case:TIME_OF_THE_DAY_Ordinal', 
      'case:Visit_Season_Ordinal', 'case:Daily_Imaging_Tests', 'case:Daily_Lab_Tests'

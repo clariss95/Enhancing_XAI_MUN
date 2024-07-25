@@ -6,18 +6,21 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, In
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import roc_auc_score, roc_curve, auc, confusion_matrix, classification_report
+from sklearn.metrics import roc_curve, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score, auc
 from sklearn.preprocessing import StandardScaler
 from imblearn.over_sampling import SMOTE
 from collections import Counter
 import matplotlib.pyplot as plt 
 from sklearn.metrics import roc_curve, auc, confusion_matrix, classification_report, precision_score, recall_score, f1_score
+from tensorflow.keras.utils import plot_model
+
 
 
 # Load the processed data from .npy files
 event_features = np.load('event_features.npy')
 case_features = np.load('case_features.npy')
 labels = np.load('labels.npy')
+print(event_features[0], "case: ", case_features[0])
 
 print("Data loaded from .npy files")
 print(event_features.shape, case_features.shape, labels.shape)
@@ -99,42 +102,46 @@ print(val_features_event.shape, val_features_case.shape, val_labels.shape)
 print(test_features_event.shape, test_features_case.shape, test_labels.shape)
 
 
-# # Define the LSTM model
-# event_feature_shape = (sequence_length, num_event_features)
-# case_feature_shape = (num_case_features,)
+#  # Define the LSTM model
+event_feature_shape = (sequence_length, num_event_features)
+case_feature_shape = (num_case_features,)
 
-# event_input = Input(shape=event_feature_shape, name='event_input')
-# lstm_out = LSTM(64, return_sequences=True)(event_input)
-# lstm_out = Dropout(0.5)(lstm_out)
-# lstm_out = LSTM(32, return_sequences=False)(lstm_out)
-# lstm_out = Dropout(0.5)(lstm_out)
-# lstm_out = BatchNormalization()(lstm_out)
+event_input = Input(shape=event_feature_shape, name='event_input')
+lstm_out = LSTM(64, return_sequences=True)(event_input)
+lstm_out = Dropout(0.5)(lstm_out)
+lstm_out = LSTM(32, return_sequences=False)(lstm_out)
+lstm_out = Dropout(0.5)(lstm_out)
+lstm_out = BatchNormalization()(lstm_out)
 
-# case_input = Input(shape=case_feature_shape, name='case_input')
-# combined = Concatenate()([lstm_out, case_input])
-# output = Dense(1, activation='sigmoid')(combined)
+case_input = Input(shape=case_feature_shape, name='case_input')
+combined = Concatenate()([lstm_out, case_input])
+output = Dense(1, activation='sigmoid')(combined)
 
-# model_enhanced = Model(inputs=[event_input, case_input], outputs=output)
-# model_enhanced.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
-# model_enhanced.summary()
+model_enhanced = Model(inputs=[event_input, case_input], outputs=output)
+model_enhanced.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+# Save the model summary to a text file
+with open('model_summary.txt', 'w') as f:
+    model_enhanced.summary(print_fn=lambda x: f.write(x + '\n'))
 
-# # Define early stopping and learning rate scheduler callbacks
+
+# # # Define early stopping and learning rate scheduler callbacks
 # early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-6)
-# model_checkpoint = ModelCheckpoint('model_enhanced.h5', save_best_only=True, monitor='val_loss', mode='min')
+# model_checkpoint = ModelCheckpoint('model_enhanced_areafix.h5', save_best_only=True, monitor='val_loss', mode='min')
 
-# # Train the model with early stopping, learning rate scheduler, and class weights
-# # class_weights = {0: 1.0, 1: 5.0}  # Adjusted class weights
+# # # Train the model with early stopping, learning rate scheduler, and class weights
+# # # class_weights = {0: 1.0, 1: 5.0}  # Adjusted class weights
 # history_enhanced = model_enhanced.fit(
-#     train_dataset_resampled, 
-#     validation_data=val_dataset, 
-#     epochs=50,  
-#    # class_weight=class_weights,
-#     callbacks=[early_stopping, reduce_lr, model_checkpoint]
-# )
+#      train_dataset_resampled, 
+#      validation_data=val_dataset, 
+#           epochs=50,  
+#  # #     class_weight=class_weights,
+#      callbacks=[early_stopping, reduce_lr, model_checkpoint]
+#  )
 
 # Load the best model
-model_enhanced = load_model('model_enhanced.h5')
+model_enhanced = load_model('model_enhanced_areafix.h5')
+
 
 
 # Evaluate the model on the test set
@@ -142,57 +149,19 @@ test_loss, test_accuracy = model_enhanced.evaluate(test_dataset)
 print("Test Loss:", test_loss)
 print("Test Accuracy:", test_accuracy)
 
-# Generate predictions for the test set
+# Assuming test_dataset and test_labels are already defined and the model is trained
 test_probs = model_enhanced.predict(test_dataset).ravel()
-test_labels_flat = test_labels.ravel()  # Flatten the labels
+test_labels_flat = test_labels.ravel()
 
-# Compute ROC curve and AUC for the test set
+# Compute ROC curve
 fpr_test, tpr_test, thresholds_test = roc_curve(test_labels_flat, test_probs)
-
-
-# Initialize lists to store results
-results = []
-
-for threshold in thresholds_test:
-    # Convert probabilities to binary predictions based on the current threshold
-    test_preds = (test_probs > threshold).astype(int)
-    
-    # Compute confusion matrix
-    cm = confusion_matrix(test_labels_flat, test_preds)
-    
-    # Compute accuracy, precision, recall, and f1-score
-    accuracy = (test_preds == test_labels_flat).mean()
-    precision = precision_score(test_labels_flat, test_preds, zero_division=0)
-    recall = recall_score(test_labels_flat, test_preds, zero_division=0)
-    f1 = f1_score(test_labels_flat, test_preds, zero_division=0)
-    
-    # Store the results
-    results.append({
-        'threshold': threshold,
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1_score': f1,
-        'confusion_matrix': cm
-    })
-
-# Convert results to a DataFrame for easier visualization
-results_df = pd.DataFrame(results, columns=['threshold', 'accuracy', 'precision', 'recall', 'f1_score', 'confusion_matrix'])
-
-# Display the results
-pd.set_option('display.max_rows', None)  # To display all rows
-print(results_df[['threshold', 'accuracy', 'precision', 'recall', 'f1_score', 'confusion_matrix']])
-
-# Export the results to a CSV file
-# results_df.to_csv('threshold_results.csv', index=False)
-
-
 
 # Define your cost function
 def cost_function(conf_matrix):
     TN, FP, FN, TP = conf_matrix.ravel()
     return FP * 1 + FN * 10  # Adjust the weights according to your cost considerations
 
+# Initialize lists to store results
 results = []
 
 for threshold in thresholds_test:
@@ -201,7 +170,7 @@ for threshold in thresholds_test:
     precision = precision_score(test_labels_flat, test_preds, zero_division=0)
     recall = recall_score(test_labels_flat, test_preds, zero_division=0)
     f1 = f1_score(test_labels_flat, test_preds, zero_division=0)
-    accuracy = (test_preds == test_labels_flat).mean()
+    accuracy = accuracy_score(test_labels_flat, test_preds)
     conf_matrix = confusion_matrix(test_labels_flat, test_preds)
     cost = cost_function(conf_matrix)
     
@@ -215,55 +184,39 @@ for threshold in thresholds_test:
         'cost': cost
     })
 
-results_df2 = pd.DataFrame(results)
+# Convert results to a DataFrame for easier visualization
+results_df = pd.DataFrame(results)
+
+# Find the threshold with the highest accuracy
+best_accuracy_threshold = results_df.loc[results_df['accuracy'].idxmax()]
+
+# Find the threshold where sensitivity equals specificity
+sensitivity_equals_specificity_threshold = results_df.loc[(results_df['recall'] - results_df['accuracy']).abs().idxmin()]
 
 # Find the threshold with the lowest cost
-best_threshold = results_df2.loc[results_df2['cost'].idxmin()]
-print("Best Threshold based on Cost Consideration:")
-print(best_threshold)
+best_cost_threshold = results_df.loc[results_df['cost'].idxmin()]
 
+# Adding the 0.5 threshold explicitly
+threshold_0_5 = results_df.loc[np.isclose(results_df['threshold'], 0.50075585)]
+
+# Print the optimal thresholds
+print("Best Accuracy Threshold:\n", best_accuracy_threshold)
+print("Threshold where Sensitivity equals Specificity:\n", sensitivity_equals_specificity_threshold)
+print("Threshold with Best Cost:\n", best_cost_threshold)
+print("Threshold 0.5:\n", threshold_0_5)
+
+# Compute ROC AUC
 roc_auc_test = auc(fpr_test, tpr_test)
 
-print(f"Test ROC AUC: {roc_auc_test:.2f}")
-
-# Plot ROC curve and distribution of probabilities
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 6))
-
-# ROC Curve
-ax1.plot(fpr_test, tpr_test, color='blue', lw=2, label=f'ROC curve (area = {roc_auc_test:.2f})')
-ax1.plot([0, 1], [0, 1], color='grey', lw=2, linestyle='--')
-ax1.set_xlim([0.0, 1.0])
-ax1.set_ylim([0.0, 1.05])
-ax1.set_xlabel('False Positive Rate')
-ax1.set_ylabel('True Positive Rate')
-ax1.set_title('Receiver Operating Characteristic (ROC) Curve')
-ax1.legend(loc="lower right")
-ax1.grid(True)
-
-# Distribution of Test Probabilities
-ax2.hist(test_probs, bins=50, alpha=0.75, color='blue', edgecolor='black')
-ax2.set_title('Distribution of Test Probabilities')
-ax2.set_xlabel('Probability')
-ax2.set_ylabel('Frequency')
-ax2.grid(True)
-
-plt.show()
-# Compute confusion matrix and classification report
-optimal_threshold = 0.6333124  # Using a default threshold of 0.5
-test_preds_optimal = (test_probs > optimal_threshold).astype(int)
-
-cm_test_optimal = confusion_matrix(test_labels_flat, test_preds_optimal)
-print("Confusion Matrix for Test Set at Optimal Threshold:")
-print(cm_test_optimal)
-
-print("Classification Report for Test Set at Optimal Threshold:")
-print(classification_report(test_labels_flat, test_preds_optimal))
-
-# Plot the distribution of test probabilities
+# Plot ROC curve
 plt.figure(figsize=(10, 6))
-plt.hist(test_probs, bins=50, alpha=0.75, color='blue', edgecolor='black')
-plt.title('Distribution of Test Probabilities')
-plt.xlabel('Probability')
-plt.ylabel('Frequency')
+plt.plot(fpr_test, tpr_test, color='blue', lw=2, label=f'ROC curve (area = {roc_auc_test:.2f})')
+plt.plot([0, 1], [0, 1], color='grey', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc="lower right")
 plt.grid(True)
 plt.show()
