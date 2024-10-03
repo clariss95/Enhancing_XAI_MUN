@@ -98,7 +98,7 @@ df_event_log_dl.head()
 df_event_log_dl.info()
 
 
-sequence_length =  3
+sequence_length =  2
 
 # Updated feature columns excluding potential leakage features
 
@@ -114,7 +114,7 @@ event_feature_columns = [
 
 
 case_feature_columns = [
-    'case:SEX', 'case:VISIT_AGE', 'case:Is_Deceased', 'case:Distance_to_Hospital',
+    'case:SEX', 'case:VISIT_AGE', 'case:Distance_to_Hospital',
      'case:Is_NL_Holiday', 'case:Area_Type','case:Day_of_Week', 'case:Is_Weekend', 'case:Visit_Frequency', 
      'case:Prior_LWBS', 'case:Case_Duration_Hours', 'case:FACILITY_ID_BUR', 'case:FACILITY_ID_CGH', 
      'case:FACILITY_ID_GBC', 'case:FACILITY_ID_HSC', 'case:FACILITY_ID_SCM', 'case:TIME_OF_THE_DAY_Ordinal', 

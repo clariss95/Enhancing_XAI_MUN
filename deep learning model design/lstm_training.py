@@ -13,6 +13,7 @@ from collections import Counter
 import matplotlib.pyplot as plt 
 from sklearn.metrics import roc_curve, auc, confusion_matrix, classification_report, precision_score, recall_score, f1_score
 from tensorflow.keras.utils import plot_model
+import joblib
 
 
 
@@ -33,7 +34,7 @@ print("Class distribution in labels:")
 print(label_counts)
 
 # Define the sequence length
-sequence_length = 3
+sequence_length = 2
 
 # Calculate the number of event features and case features
 num_event_features = event_features.shape[2]
@@ -90,6 +91,9 @@ val_features_case = scaler_case.transform(val_features_case)
 test_features_event = scaler_event.transform(test_features_event.reshape(-1, num_event_features)).reshape(test_features_event.shape[0], sequence_length, num_event_features)
 test_features_case = scaler_case.transform(test_features_case)
 
+# Save the scalers to files
+joblib.dump(scaler_event, 'scaler_event.pkl')
+joblib.dump(scaler_case, 'scaler_case.pkl')
 
 # Create TensorFlow datasets
 train_dataset_resampled = tf.data.Dataset.from_tensor_slices(((train_features_event_resampled, train_features_case_resampled), train_labels_resampled)).batch(32)
@@ -120,14 +124,14 @@ output = Dense(1, activation='sigmoid')(combined)
 model_enhanced = Model(inputs=[event_input, case_input], outputs=output)
 model_enhanced.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
 # Save the model summary to a text file
-with open('model_summary.txt', 'w') as f:
+with open('model_summary2.txt', 'w') as f:
     model_enhanced.summary(print_fn=lambda x: f.write(x + '\n'))
 
 
 # # # Define early stopping and learning rate scheduler callbacks
 # early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-6)
-# model_checkpoint = ModelCheckpoint('model_enhanced_areafix.h5', save_best_only=True, monitor='val_loss', mode='min')
+# model_checkpoint = ModelCheckpoint('model_enhanced_prefix2_isdeceasedfix.h5', save_best_only=True, monitor='val_loss', mode='min')
 
 # # # Train the model with early stopping, learning rate scheduler, and class weights
 # # # class_weights = {0: 1.0, 1: 5.0}  # Adjusted class weights
@@ -140,7 +144,7 @@ with open('model_summary.txt', 'w') as f:
 #  )
 
 # Load the best model
-model_enhanced = load_model('model_enhanced_areafix.h5')
+model_enhanced = load_model('model_enhanced_prefix2_isdeceasedfix.h5')
 
 
 
@@ -186,6 +190,9 @@ for threshold in thresholds_test:
 
 # Convert results to a DataFrame for easier visualization
 results_df = pd.DataFrame(results)
+
+# Save the DataFrame to a CSV file
+results_df.to_csv('threshold_results.csv', index=False)
 
 # Find the threshold with the highest accuracy
 best_accuracy_threshold = results_df.loc[results_df['accuracy'].idxmax()]
