@@ -67,7 +67,7 @@ rename_dict = {
     'Unique_Presenting_Complaints': 'event:Unique_Presenting_Complaints',
     'Is_LWBS': 'event:Is_LWBS',
     'Activity_Duration': 'event:Activity_Duration',
-    'Disposition_Frequency': 'event:Disposition_Frequency',
+    'Disposition_Frequency': 'case:Disposition_Frequency',
     'Died_Before_Visit': 'event:Died_Before_Visit',
     'Died_During_Visit': 'event:Died_During_Visit',
     'Died_After_Visit': 'event:Died_After_Visit',
@@ -109,7 +109,7 @@ event_feature_columns = [
     'event:Num_Lab_Tests', 'event:Mean_Age', 'event:Activity_Admitting patient', 'event:Activity_Assessment',
     'event:Activity_Making admit decision', 'event:Activity_Patient departed', 
     'event:Activity_Patient discharge', 'event:Activity_Providing service', 
-    'event:Activity_Triage', 'event:Activity_Duration', 'event:Disposition_Frequency'
+    'event:Activity_Triage', 'event:Activity_Duration'
 ]
 
 
@@ -118,7 +118,7 @@ case_feature_columns = [
      'case:Is_NL_Holiday', 'case:Area_Type','case:Day_of_Week', 'case:Is_Weekend', 'case:Visit_Frequency', 
      'case:Prior_LWBS', 'case:Case_Duration_Hours', 'case:FACILITY_ID_BUR', 'case:FACILITY_ID_CGH', 
      'case:FACILITY_ID_GBC', 'case:FACILITY_ID_HSC', 'case:FACILITY_ID_SCM', 'case:TIME_OF_THE_DAY_Ordinal', 
-     'case:Visit_Season_Ordinal', 'case:Daily_Imaging_Tests', 'case:Daily_Lab_Tests'
+     'case:Visit_Season_Ordinal', 'case:Daily_Imaging_Tests', 'case:Daily_Lab_Tests', 'case:Disposition_Frequency'
 ]
 
 # Create meaningful feature names for the last step
