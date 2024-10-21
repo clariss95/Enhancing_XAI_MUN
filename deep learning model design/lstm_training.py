@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import LSTM, Dense, Dropout, BatchNormalization, Input, Concatenate
@@ -25,6 +26,9 @@ print(event_features[0], "case: ", case_features[0])
 
 print("Data loaded from .npy files")
 print(event_features.shape, case_features.shape, labels.shape)
+
+
+
 
 # Count the occurrences of each class (0 and 1)
 label_counts = Counter(labels)
@@ -128,23 +132,24 @@ with open('model_summary2.txt', 'w') as f:
     model_enhanced.summary(print_fn=lambda x: f.write(x + '\n'))
 
 
-# # # Define early stopping and learning rate scheduler callbacks
-# early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
-# reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-6)
-# model_checkpoint = ModelCheckpoint('model_enhanced_prefix2_isdeceasedfix.h5', save_best_only=True, monitor='val_loss', mode='min')
+# # Define early stopping and learning rate scheduler callbacks
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2, min_lr=1e-6)
+model_checkpoint = ModelCheckpoint('case-feature-fix-model.h5', save_best_only=True, monitor='val_loss', mode='min')
 
-# # # Train the model with early stopping, learning rate scheduler, and class weights
-# # # class_weights = {0: 1.0, 1: 5.0}  # Adjusted class weights
-# history_enhanced = model_enhanced.fit(
-#      train_dataset_resampled, 
-#      validation_data=val_dataset, 
-#           epochs=50,  
-#  # #     class_weight=class_weights,
-#      callbacks=[early_stopping, reduce_lr, model_checkpoint]
-#  )
+# # Train the model with early stopping, learning rate scheduler, and class weights
+# # class_weights = {0: 1.0, 1: 5.0}  # Adjusted class weights
+history_enhanced = model_enhanced.fit(
+     train_dataset_resampled, 
+     validation_data=val_dataset, 
+          epochs=70,  
+ # #     class_weight=class_weights,
+     callbacks=[early_stopping, reduce_lr, model_checkpoint]
+ )
 
 # Load the best model
-model_enhanced = load_model('model_enhanced_prefix2_isdeceasedfix.h5')
+
+model_enhanced = load_model('case-feature-fix-model.h5')
 
 
 
@@ -159,6 +164,46 @@ test_labels_flat = test_labels.ravel()
 
 # Compute ROC curve
 fpr_test, tpr_test, thresholds_test = roc_curve(test_labels_flat, test_probs)
+
+# Compute ROC AUC
+roc_auc_test = auc(fpr_test, tpr_test)
+
+# Plot ROC curve
+plt.figure(figsize=(10, 6))
+plt.plot(fpr_test, tpr_test, color='blue', lw=2, label=f'ROC curve (AUC = {roc_auc_test:.2f})')
+plt.plot([0, 1], [0, 1], color='grey', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc="lower right")
+plt.grid(True)
+
+# Save the ROC curve plot to a file
+plt.savefig('roc_curve-noncomb.png')
+
+# Display the plot
+plt.show()
+
+import matplotlib.pyplot as plt
+
+# Assuming 'history_enhanced' is the history object returned by model.fit()
+plt.figure(figsize=(10, 6))
+plt.plot(history_enhanced.history['loss'], label='Training Loss')
+plt.plot(history_enhanced.history['val_loss'], label='Validation Loss')
+plt.title('Training and Validation Loss Over Epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.grid(True)
+
+# Save the figure to a file
+plt.savefig('training_validation_loss-noncomb.png')
+
+# Display the plot
+plt.show()
+
 
 # Define your cost function
 def cost_function(conf_matrix):
@@ -203,8 +248,8 @@ sensitivity_equals_specificity_threshold = results_df.loc[(results_df['recall'] 
 # Find the threshold with the lowest cost
 best_cost_threshold = results_df.loc[results_df['cost'].idxmin()]
 
-# Adding the 0.5 threshold explicitly
-threshold_0_5 = results_df.loc[np.isclose(results_df['threshold'], 0.50075585)]
+# Find the row where the threshold is closest to 0.5 
+threshold_0_5 = results_df.iloc[(results_df['threshold'] - 0.5).abs().argmin()]  
 
 # Print the optimal thresholds
 print("Best Accuracy Threshold:\n", best_accuracy_threshold)
@@ -212,18 +257,4 @@ print("Threshold where Sensitivity equals Specificity:\n", sensitivity_equals_sp
 print("Threshold with Best Cost:\n", best_cost_threshold)
 print("Threshold 0.5:\n", threshold_0_5)
 
-# Compute ROC AUC
-roc_auc_test = auc(fpr_test, tpr_test)
 
-# Plot ROC curve
-plt.figure(figsize=(10, 6))
-plt.plot(fpr_test, tpr_test, color='blue', lw=2, label=f'ROC curve (area = {roc_auc_test:.2f})')
-plt.plot([0, 1], [0, 1], color='grey', lw=2, linestyle='--')
-plt.xlim([0.0, 1.0])
-plt.ylim([0.0, 1.05])
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('Receiver Operating Characteristic (ROC) Curve')
-plt.legend(loc="lower right")
-plt.grid(True)
-plt.show()
